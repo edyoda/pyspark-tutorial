@@ -1,6 +1,6 @@
 ----------------------------------------------------------------
-Tue Nov 14 14:23:35 UTC 2017:
-Booting Derby version The Apache Software Foundation - Apache Derby - 10.12.1.1 - (1704137): instance a816c00e-015f-bae9-f27f-000000f9be78 
+Wed Nov 15 16:31:48 UTC 2017:
+Booting Derby version The Apache Software Foundation - Apache Derby - 10.12.1.1 - (1704137): instance a816c00e-015f-c085-b1e4-000000fcd8d0 
 on database directory /tensorFolder/pyspark/metastore_db with class loader org.apache.spark.sql.hive.client.IsolatedClientLoader$$anon$1@52b8ed4c 
 Loaded from file:/home/ec2-user/spark-2.2.0-bin-hadoop2.7/jars/derby-10.12.1.1.jar
 java.vendor=Oracle Corporation
