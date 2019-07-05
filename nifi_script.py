@@ -1,37 +1,26 @@
-from org.apache.nifi.processors.script import ExecuteScript
-from org.apache.nifi.processor.io import InputStreamCallback
 from java.io import BufferedReader, InputStreamReader
+import json
+import java.io
+from org.apache.commons.io import IOUtils
+from java.nio.charset import StandardCharsets
+from org.apache.nifi.processor.io import StreamCallback
 
-class ReadFirstLine(InputStreamCallback) :
-    __line = None;
-
-    def __init__(self) :
+class ModJSON(StreamCallback):
+  def __init__(self):
         pass
-
-    def getLine(self) :
-        return self.__line
-
-    def process(self, input) :
-        try :
-            reader = InputStreamReader(input)
-            bufferedReader = BufferedReader(reader)
-            self.__line = bufferedReader.readLine()
-        except :
-            print "Exception in Reader:"
-            print '-' * 60
-            traceback.print_exc(file=sys.stdout)
-            print '-' * 60
-            raise
-        finally :
-            if bufferedReader is not None :
-                bufferedReader.close()
-            if reader is not None :
-                reader.close()
-
+    
+  def process(self, inputStream, outputStream):
+    text = IOUtils.toString(inputStream, StandardCharsets.UTF_8)
+    obj = json.loads(text)
+    newObj = {
+          "Source": "NiFi",
+          "Dest":"Stuff",
+        }
+    outputStream.write(bytearray(json.dumps(newObj, indent=4).encode('utf-8')))
+ 
 flowFile = session.get()
-if flowFile is not None :
-
-    reader = ReadFirstLine()
-    session.read(flowFile, reader)
-    flowFile = session.putAttribute(flowFile, "from-content", reader.getLine()[:2])
-    session.transfer(flowFile, ExecuteScript.REL_SUCCESS)
+if (flowFile != None):
+    flowFile = session.write(flowFile, ModJSON())
+    flowFile = session.putAttribute(flowFile, "filename", flowFile.getAttribute('filename').split('.')[0]+'_translated.json')
+    session.transfer(flowFile, REL_SUCCESS)
+    session.commit()
