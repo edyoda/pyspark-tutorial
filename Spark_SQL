@@ -1,0 +1,357 @@
+spark.read.json("/FileStore/tables/2015_flight_data-f8a15.json")\
+  .createOrReplaceTempView("some_sql_view") # DF => SQL
+
+spark.sql("""
+SELECT DEST_COUNTRY_NAME, sum(count)
+FROM some_sql_view GROUP BY DEST_COUNTRY_NAME
+""")\
+  .where("DEST_COUNTRY_NAME like 'S%'").where("`sum(count)` > 10")\
+  .count() # SQL => DF
+
+
+CREATE TABLE flights (
+  DEST_COUNTRY_NAME STRING, ORIGIN_COUNTRY_NAME STRING, count LONG)
+USING JSON OPTIONS (path '/FileStore/tables/2015_flight_data-f8a15.json')
+
+
+----
+
+CREATE TABLE flights_csv (
+  DEST_COUNTRY_NAME STRING,
+  ORIGIN_COUNTRY_NAME STRING COMMENT "remember, the US will be most prevalent",
+  count LONG)
+USING csv OPTIONS (header true, path '/data/flight-data/csv/2015-summary.csv')
+
+
+----
+
+CREATE TABLE flights_from_select USING parquet AS SELECT * FROM flights
+
+
+----
+
+CREATE TABLE IF NOT EXISTS flights_from_select
+  AS SELECT * FROM flights
+
+
+----
+
+CREATE TABLE partitioned_flights USING parquet PARTITIONED BY (DEST_COUNTRY_NAME)
+AS SELECT DEST_COUNTRY_NAME, ORIGIN_COUNTRY_NAME, count FROM flights LIMIT 5
+
+
+----
+
+CREATE EXTERNAL TABLE hive_flights (
+  DEST_COUNTRY_NAME STRING, ORIGIN_COUNTRY_NAME STRING, count LONG)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LOCATION '/data/flight-data-hive/'
+
+
+----
+
+CREATE EXTERNAL TABLE hive_flights_2
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+LOCATION '/data/flight-data-hive/' AS SELECT * FROM flights
+
+
+----
+
+INSERT INTO flights_from_select
+  SELECT DEST_COUNTRY_NAME, ORIGIN_COUNTRY_NAME, count FROM flights LIMIT 20
+
+
+----
+
+INSERT INTO partitioned_flights
+  PARTITION (DEST_COUNTRY_NAME="UNITED STATES")
+  SELECT count, ORIGIN_COUNTRY_NAME FROM flights
+  WHERE DEST_COUNTRY_NAME='UNITED STATES' LIMIT 12
+
+
+----
+
+DESCRIBE TABLE flights_csv
+
+
+----
+
+SHOW PARTITIONS partitioned_flights
+
+
+----
+
+REFRESH table partitioned_flights
+
+
+----
+
+MSCK REPAIR TABLE partitioned_flights
+
+
+----
+
+DROP TABLE flights_csv;
+
+
+----
+
+DROP TABLE IF EXISTS flights_csv;
+
+
+----
+
+CACHE TABLE flights
+
+
+----
+
+UNCACHE TABLE FLIGHTS
+
+
+----
+
+CREATE VIEW just_usa_view AS
+  SELECT * FROM flights WHERE dest_country_name = 'United States'
+
+
+----
+
+CREATE TEMP VIEW just_usa_view_temp AS
+  SELECT * FROM flights WHERE dest_country_name = 'United States'
+
+
+----
+
+CREATE GLOBAL TEMP VIEW just_usa_global_view_temp AS
+  SELECT * FROM flights WHERE dest_country_name = 'United States'
+
+
+----
+
+SHOW TABLES
+
+
+----
+
+CREATE OR REPLACE TEMP VIEW just_usa_view_temp AS
+  SELECT * FROM flights WHERE dest_country_name = 'United States'
+
+
+----
+
+SELECT * FROM just_usa_view_temp
+
+
+----
+
+EXPLAIN SELECT * FROM just_usa_view
+
+
+----
+
+EXPLAIN SELECT * FROM flights WHERE dest_country_name = 'United States'
+
+
+----
+
+DROP VIEW IF EXISTS just_usa_view;
+
+
+----
+
+SHOW DATABASES
+
+
+----
+
+CREATE DATABASE some_db
+
+
+----
+
+USE some_db
+
+
+----
+
+SHOW tables
+
+SELECT * FROM flights -- fails with table/view not found
+
+
+----
+
+SELECT * FROM default.flights
+
+
+----
+
+SELECT current_database()
+
+
+----
+
+USE default;
+
+
+----
+
+DROP DATABASE IF EXISTS some_db;
+
+
+----
+
+SELECT [ALL|DISTINCT] named_expression[, named_expression, ...]
+    FROM relation[, relation, ...]
+    [lateral_view[, lateral_view, ...]]
+    [WHERE boolean_expression]
+    [aggregation [HAVING boolean_expression]]
+    [ORDER BY sort_expressions]
+    [CLUSTER BY expressions]
+    [DISTRIBUTE BY expressions]
+    [SORT BY sort_expressions]
+    [WINDOW named_window[, WINDOW named_window, ...]]
+    [LIMIT num_rows]
+
+named_expression:
+    : expression [AS alias]
+
+relation:
+    | join_relation
+    | (table_name|query|relation) [sample] [AS alias]
+    : VALUES (expressions)[, (expressions), ...]
+          [AS (column_name[, column_name, ...])]
+
+expressions:
+    : expression[, expression, ...]
+
+sort_expressions:
+    : expression [ASC|DESC][, expression [ASC|DESC], ...]
+
+
+----
+
+SELECT
+  CASE WHEN DEST_COUNTRY_NAME = 'UNITED STATES' THEN 1
+       WHEN DEST_COUNTRY_NAME = 'Egypt' THEN 0
+       ELSE -1 END
+FROM partitioned_flights
+
+
+----
+
+CREATE VIEW IF NOT EXISTS nested_data AS
+  SELECT (DEST_COUNTRY_NAME, ORIGIN_COUNTRY_NAME) as country, count FROM flights
+
+
+----
+
+SELECT * FROM nested_data
+
+
+----
+
+SELECT country.DEST_COUNTRY_NAME, count FROM nested_data
+
+
+----
+
+SELECT country.*, count FROM nested_data
+
+
+----
+
+SELECT DEST_COUNTRY_NAME as new_name, collect_list(count) as flight_counts,
+  collect_set(ORIGIN_COUNTRY_NAME) as origin_set
+FROM flights GROUP BY DEST_COUNTRY_NAME
+
+
+----
+
+SELECT DEST_COUNTRY_NAME, ARRAY(1, 2, 3) FROM flights
+
+
+----
+
+SELECT DEST_COUNTRY_NAME as new_name, collect_list(count)[0]
+FROM flights GROUP BY DEST_COUNTRY_NAME
+
+
+----
+
+CREATE OR REPLACE TEMP VIEW flights_agg AS
+  SELECT DEST_COUNTRY_NAME, collect_list(count) as collected_counts
+  FROM flights GROUP BY DEST_COUNTRY_NAME
+
+
+----
+
+SELECT explode(collected_counts), DEST_COUNTRY_NAME FROM flights_agg
+
+
+----
+
+SHOW FUNCTIONS
+
+
+----
+
+SHOW SYSTEM FUNCTIONS
+
+
+----
+
+SHOW USER FUNCTIONS
+
+
+----
+
+SHOW FUNCTIONS "s*";
+
+
+----
+
+SHOW FUNCTIONS LIKE "collect*";
+
+
+----
+
+SELECT count, power3(count) FROM flights
+
+
+----
+
+SELECT dest_country_name FROM flights
+GROUP BY dest_country_name ORDER BY sum(count) DESC LIMIT 5
+
+
+----
+
+SELECT * FROM flights
+WHERE origin_country_name IN (SELECT dest_country_name FROM flights
+      GROUP BY dest_country_name ORDER BY sum(count) DESC LIMIT 5)
+
+
+----
+
+SELECT * FROM flights f1
+WHERE EXISTS (SELECT 1 FROM flights f2
+            WHERE f1.dest_country_name = f2.origin_country_name)
+AND EXISTS (SELECT 1 FROM flights f2
+            WHERE f2.dest_country_name = f1.origin_country_name)
+
+
+----
+
+SELECT *, (SELECT max(count) FROM flights) AS maximum FROM flights
+
+
+----
+
+SET spark.sql.shuffle.partitions=20
+
+
+----
+
+
+
